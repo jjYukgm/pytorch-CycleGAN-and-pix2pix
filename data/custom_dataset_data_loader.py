@@ -9,7 +9,7 @@ def CreateDataset(opt):
         dataset = AlignedDataset()
     elif opt.dataset_mode == 'biunaligned':
         from data.biunaligned_dataset import BiUnalignedDataset
-        dataset = UnalignedDataset()
+        dataset = BiUnalignedDataset()
     elif opt.dataset_mode == 'unaligned':
         from data.unaligned_dataset import UnalignedDataset
         dataset = UnalignedDataset()
