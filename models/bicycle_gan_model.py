@@ -111,24 +111,26 @@ class BiCycleGANModel(BaseModel):
 
     def test(self):
         real_A = Variable(self.input_A, volatile=True)
-        fake_BA = self.netG_AB(real_A)
-        self.rec_A = self.netG_BA(fake_BA).data
-        self.fake_BA = fake_BA.data
+        fake_AB = self.netG_AB(real_A)
+        self.rec_ABA = self.netG_BA(fake_AB).data
+        self.rec_ABC = self.netG_BC(fake_AB).data
+        self.fake_AB = fake_AB.data
 
         real_B = Variable(self.input_B, volatile=True)
-        fake_A = self.netG_BA(real_B)
-        self.rec_BA = self.netG_AB(fake_A).data
-        self.fake_A = fake_A.data
+        fake_BA = self.netG_BA(real_B)
+        self.rec_BAB = self.netG_AB(fake_BA).data
+        self.fake_BA = fake_BA.data
         
         real_B = Variable(self.input_B, volatile=True)
-        fake_C = self.netG_BC(real_B)
-        self.rec_BC = self.netG_CB(fake_C).data
-        self.fake_C = fake_C.data
+        fake_BC = self.netG_BC(real_B)
+        self.rec_BCB = self.netG_CB(fake_BC).data
+        self.fake_BC = fake_BC.data
         
         real_C = Variable(self.input_C, volatile=True)
-        fake_BC = self.netG_CB(real_C)
-        self.rec_C = self.netG_BC(fake_BC).data
-        self.fake_BC = fake_BC.data
+        fake_CB = self.netG_CB(real_C)
+        self.rec_CBC = self.netG_BC(fake_CB).data
+        self.rec_CBA = self.netG_BA(fake_CB).data
+        self.fake_CB = fake_CB.data
 
     # get image paths
     def get_image_paths(self):
@@ -148,21 +150,21 @@ class BiCycleGANModel(BaseModel):
         return loss_D
 
     def backward_D_A(self):
-        fake_BA = self.fake_B_pool.query(self.fake_BA)
-        loss_D_A = self.backward_D_basic(self.netD_A, self.real_B, fake_BA)
+        fake_BA = self.fake_A_pool.query(self.fake_BA)
+        loss_D_A = self.backward_D_basic(self.netD_A, self.real_A, fake_BA)
         self.loss_D_A = loss_D_A.data[0]
 
     def backward_D_B(self):
-        fake_A = self.fake_A_pool.query(self.fake_A)
-        loss_D_BA = self.backward_D_basic(self.netD_B, self.real_A, fake_A)
+        fake_AB = self.fake_B_pool.query(self.fake_AB)
+        loss_D_AB = self.backward_D_basic(self.netD_B, self.real_B, fake_AB)
         
-        fake_C = self.fake_C_pool.query(self.fake_C)
-        loss_D_BC = self.backward_D_basic(self.netD_B, self.real_C, fake_C)
-        self.loss_D_B = loss_D_BA.data[0] + loss_D_BC.data[0]
+        fake_CB = self.fake_B_pool.query(self.fake_CB)
+        loss_D_CB = self.backward_D_basic(self.netD_B, self.real_B, fake_CB)
+        self.loss_D_B = (loss_D_AB.data[0] + loss_D_CB.data[0]) * 0.5
         
     def backward_D_C(self):
         fake_BC = self.fake_B_pool.query(self.fake_BC)
-        loss_D_C = self.backward_D_basic(self.netD_C, self.real_B, fake_BC)
+        loss_D_C = self.backward_D_basic(self.netD_C, self.real_C, fake_BC)
         self.loss_D_C = loss_D_C.data[0]
 
     def backward_G(self):
@@ -202,29 +204,29 @@ class BiCycleGANModel(BaseModel):
             self.loss_idt_BC = 0
             self.loss_idt_CB = 0
 
-        # GAN loss D_A(G_AB(A))
+        # GAN loss D_B(G_AB(A))
         fake_AB = self.netG_AB(self.real_A)
-        pred_fake = self.netD_A(fake_AB)
+        pred_fake = self.netD_B(fake_AB)
         loss_G_AB = self.criterionGAN(pred_fake, True)
 
-        # GAN loss D_B(G_BA(B))
+        # GAN loss D_A(G_BA(B))
         fake_BA = self.netG_BA(self.real_B)
-        pred_fake = self.netD_B(fake_A)
+        pred_fake = self.netD_A(fake_BA)
         loss_G_BA = self.criterionGAN(pred_fake, True)
-        # GAN loss D_B(G_BC(B))
+        # GAN loss D_C(G_BC(B))
         fake_BC = self.netG_BC(self.real_B)
-        pred_fake = self.netD_B(fake_C)
+        pred_fake = self.netD_C(fake_BC)
         loss_G_BC = self.criterionGAN(pred_fake, True)
         
-        # GAN loss D_C(G_CB(C))
+        # GAN loss D_B(G_CB(C))
         fake_CB = self.netG_CB(self.real_C)
-        pred_fake = self.netD_C(fake_CB)
+        pred_fake = self.netD_B(fake_CB)
         loss_G_CB = self.criterionGAN(pred_fake, True)
 
         # Forward cycle loss
         rec_ABA = self.netG_BA(fake_AB)
         loss_cycle_ABA = self.criterionCycle(rec_ABA, self.real_A) * lambda_A
-        rec_CBA = self.netG_BA(fake_CB)
+        rec_CBA = self.netG_BA(self.netG_CB(self.netG_BC(fake_AB)))
         loss_cycle_CBA = self.criterionCycle(rec_CBA, self.real_A) * lambda_A
 
         # Backward cycle loss
@@ -234,15 +236,15 @@ class BiCycleGANModel(BaseModel):
         loss_cycle_BCB = self.criterionCycle(rec_BCB, self.real_B) * lambda_B
         
         # Forward cycle loss
-        rec_ABC = self.netG_BC(fake_AB)
+        rec_ABC = self.netG_BC(self.netG_AB(self.netG_BA(fake_CB)))
         loss_cycle_ABC = self.criterionCycle(rec_ABC, self.real_C) * lambda_A
         rec_CBC = self.netG_BC(fake_CB)
         loss_cycle_CBC = self.criterionCycle(rec_CBC, self.real_C) * lambda_A
         
         # combined loss
-        loss_G = loss_G_AB + loss_G_BA + loss_G_BC + loss_G_CB 
-            + loss_cycle_ABA + loss_cycle_CBA + loss_cycle_BCB + loss_cycle_BAB + loss_cycle_ABC + loss_cycle_CBC 
-            + loss_idt_AB + loss_idt_BA + loss_idt_BC + loss_idt_CB
+        loss_G = loss_G_AB + loss_G_BA + loss_G_BC + loss_G_CB + \
+            loss_cycle_ABA + loss_cycle_CBA + loss_cycle_BCB + loss_cycle_BAB + loss_cycle_ABC + loss_cycle_CBC + \
+            loss_idt_AB + loss_idt_BA + loss_idt_BC + loss_idt_CB
         loss_G.backward()
 
         self.fake_AB = fake_AB.data

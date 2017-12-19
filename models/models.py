@@ -5,7 +5,7 @@ def create_model(opt):
     if opt.model == 'bicycle_gan':
         assert(opt.dataset_mode == 'biunaligned')
         from .bicycle_gan_model import BiCycleGANModel
-        model = CycleGANModel()
+        model = BiCycleGANModel()
     elif opt.model == 'cycle_gan':
         assert(opt.dataset_mode == 'unaligned')
         from .cycle_gan_model import CycleGANModel
