@@ -21,11 +21,18 @@ class UnalignedDataset(BaseDataset):
         self.A_size = len(self.A_paths)
         self.B_size = len(self.B_paths)
         self.transform = get_transform(opt)
+        if hasattr(self.opt, "how_many"):
+            self.opt.no_rand = True
+        else:
+            self.opt.no_rand = False
 
     def __getitem__(self, index):
         A_path = self.A_paths[index % self.A_size]
         index_A = index % self.A_size
-        index_B = random.randint(0, self.B_size - 1)
+        if self.opt.no_rand:
+            index_B = index % self.B_size
+        else:
+            index_B = random.randint(0, self.B_size - 1)
         B_path = self.B_paths[index_B]
         # print('(A, B) = (%d, %d)' % (index_A, index_B))
         A_img = Image.open(A_path).convert('RGB')
