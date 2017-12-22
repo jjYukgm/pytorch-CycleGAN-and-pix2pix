@@ -2,6 +2,9 @@ import torch.utils.data as data
 from PIL import Image
 import torchvision.transforms as transforms
 import random
+# for split mask
+import torch
+import numpy as np
 
 class BaseDataset(data.Dataset):
     def __init__(self):
@@ -78,3 +81,56 @@ def combineTransform(A_img, mA_img, opt):
     mA = tmp.unsqueeze(0)
 
     return A, mA
+def splitMask(mA):
+
+    return _oneNineSplit(mA)
+def _oneNineSplit(mA):
+    mAA = None
+    mAB = None
+
+    # get bound x, y
+    ind = np.where(mA.sum(dim=2).data.numpy() > 0)
+    wmin = ind[2].min()
+    wmax = ind[2].max()
+    ind = np.where(mA.sum(dim=3).data.numpy() > 0)
+    hmin = ind[2].min()
+    hmax = ind[2].max()
+
+    # gen rand in 1/3 bounding
+    wcen = (wmax - wmin) *random.uniform(0, 1) /3. + (wmax + wmin) * 0.5
+    hcen = (hmax - hmin) *random.uniform(0, 1) /3. + (hmax + hmin) * 0.5
+
+    # gen slope
+    wsli = random.uniform(-1, 1)
+    hsli = random.uniform(-1, 1)
+
+    # split the mask
+    mAA = mAB = mA.data.numpy()
+    hei = mA.data.shape[2]
+    wid = mA.data.shape[3]
+    if wsli ==0:
+        mAB[:, :, 0:hcen, :] = 0.
+        mAA[:, :, hcen:, :] = 0.
+    elif hsli ==0:
+        mAB[:, :, :, :wcen] = 0.
+        mAA[:, :, :, wcen:] = 0.
+    else:
+        slope = hsli / wsli
+        for h in range(hei):
+            for w in range(wid):
+                if w == wcen:
+                    if slope > 0.:
+                        mAA[:,:,h,w] = 0.
+                    else:
+                        mAB[:,:,h,w] = 0.
+                elif (h - hcen)/(w - wcen) > slope:
+                    mAA[:,:,h,w] = 0.
+                else:
+                    mAB[:,:,h,w] = 0.
+
+    # random change AA, AB
+    if random.uniform(0, 1) > 0.5:
+        mAA, mAB = mAB, mAA
+    mAA = torch.from_numpy(mAA)
+    mAB = torch.from_numpy(mAB)
+    return mAA, mAB

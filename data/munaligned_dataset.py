@@ -1,6 +1,6 @@
 import os.path
 import torchvision.transforms as transforms
-from data.base_dataset import BaseDataset, combineTransform
+from data.base_dataset import BaseDataset, combineTransform, splitMask
 from data.image_folder import make_dataset
 from PIL import Image
 import PIL
@@ -55,6 +55,10 @@ class MUnalignedDataset(BaseDataset):
         A, mA = combineTransform(A_img, mA_img, self.opt)
         B, mB = combineTransform(B_img, mB_img, self.opt)
 
+        # split mask
+        mAA, mAB = splitMask(mA)
+        mBB, mBA = splitMask(mB)
+
         if self.opt.which_direction == 'BtoA':
             input_nc = self.opt.output_nc
             output_nc = self.opt.input_nc
@@ -70,6 +74,7 @@ class MUnalignedDataset(BaseDataset):
             tmp = B[0, ...] * 0.299 + B[1, ...] * 0.587 + B[2, ...] * 0.114
             B = tmp.unsqueeze(0)
         return {'A': A, 'B': B, 'mA': mA, 'mB': mB,
+                'mAA': mAA, 'mAB': mAB, 'mBA': mBA, 'mBB': mBB,
                 'A_paths': A_path, 'B_paths': B_path}
 
     def __len__(self):
