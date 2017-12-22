@@ -1,6 +1,6 @@
 import os.path
 import torchvision.transforms as transforms
-from data.base_dataset import BaseDataset, combineTransform, splitMask
+from data.base_dataset import BaseDataset, combineTransform, splitMask, convertMask
 from data.image_folder import make_dataset
 from PIL import Image
 import PIL
@@ -10,10 +10,17 @@ class MUnalignedDataset(BaseDataset):
     def initialize(self, opt):
         self.opt = opt
         self.root = opt.dataroot
+        if opt.isG3:
+            self.dir_mA = os.path.join(opt.dataroot, 'testmask')
+            self.mA_paths = make_dataset(self.dir_mA)
+            self.mA_paths = sorted(self.mA_paths)
+            self.mA_size = len(self.mA_paths)
+            return
+
         self.dir_A = os.path.join(opt.dataroot, opt.phase + 'A')
         self.dir_B = os.path.join(opt.dataroot, opt.phase + 'B')
-        self.dir_mA = os.path.join(opt.dataroot, 'maskA')
-        self.dir_mB = os.path.join(opt.dataroot, 'maskB')
+        self.dir_mA = os.path.join(opt.dataroot, opt.phase + 'maskA')
+        self.dir_mB = os.path.join(opt.dataroot, opt.phase + 'maskB')
 
         self.A_paths = make_dataset(self.dir_A)
         self.B_paths = make_dataset(self.dir_B)
@@ -35,6 +42,14 @@ class MUnalignedDataset(BaseDataset):
             self.opt.no_rand = False
 
     def __getitem__(self, index):
+        if self.opt.isG3:
+            mA_path = self.mA_paths[index % self.mA_size]
+            mA_img = Image.open(mA_path).convert('RGB')
+            mA, mAA, mAB = convertMask(mA_img)
+            return {'mA': mA, 'mAA': mAA, 'mAB': mAB,
+                    'mB': mA, 'mAB': mAA, 'mBA': mAB,
+                    'A_paths': mA_path}
+
         A_path = self.A_paths[index % self.A_size]
         mA_path = self.mA_paths[index % self.A_size]
         index_A = index % self.A_size
@@ -47,8 +62,8 @@ class MUnalignedDataset(BaseDataset):
         # print('(A, B) = (%d, %d)' % (index_A, index_B))
         A_img = Image.open(A_path).convert('RGB')
         B_img = Image.open(B_path).convert('RGB')
-        mA_img = Image.open(A_path).convert('RGB')
-        mB_img = Image.open(B_path).convert('RGB')
+        mA_img = Image.open(mB_path).convert('RGB')
+        mB_img = Image.open(mA_path).convert('RGB')
 
 
         # transform

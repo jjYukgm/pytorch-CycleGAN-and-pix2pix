@@ -20,8 +20,9 @@ class ChimeraGANModel(BaseModel):
 
         nb = opt.batchSize
         size = opt.fineSize
-        self.input_A = self.Tensor(nb, opt.output_nc, size, size)
-        self.input_B = self.Tensor(nb, opt.output_nc, size, size)
+        if not opt.isG3:
+            self.input_A = self.Tensor(nb, opt.output_nc, size, size)
+            self.input_B = self.Tensor(nb, opt.output_nc, size, size)
         self.mask_A = self.Tensor(nb, opt.input_nc, size, size)
         self.mask_B = self.Tensor(nb, opt.input_nc, size, size)
         self.mask_AA = self.Tensor(nb, opt.input_nc, size, size)
@@ -104,21 +105,37 @@ class ChimeraGANModel(BaseModel):
 
     def set_input(self, input):
         AtoB = self.opt.which_direction == 'AtoB'
-        input_A = input['A' if AtoB else 'B']
-        input_B = input['B' if AtoB else 'A']
+
+        if not self.opt.isG3:
+            input_A = input['A' if AtoB else 'B']
+            input_B = input['B' if AtoB else 'A']
+            self.input_A.resize_(input_A.size()).copy_(input_A)
+            self.input_B.resize_(input_B.size()).copy_(input_B)
+
         mask_A = input['mA']
         mask_B = input['mB']
-        self.input_A.resize_(input_A.size()).copy_(input_A)
-        self.input_B.resize_(input_B.size()).copy_(input_B)
+        mask_AA = input['mAA']
+        mask_AB = input['mAB']
+        mask_BA = input['mBA']
+        mask_BB = input['mBB']
         self.mask_A.resize_(mask_A.size()).copy_(mask_A)
         self.mask_B.resize_(mask_B.size()).copy_(mask_B)
+        self.mask_AA.resize_(mask_AA.size()).copy_(mask_AA)
+        self.mask_AB.resize_(mask_AB.size()).copy_(mask_AB)
+        self.mask_BA.resize_(mask_BA.size()).copy_(mask_BA)
+        self.mask_BB.resize_(mask_BB.size()).copy_(mask_BB)
         self.image_paths = input['A_paths' if AtoB else 'B_paths']
 
     def forward(self):
-        self.real_A = Variable(self.input_A)
-        self.real_B = Variable(self.input_B)
+        if not self.opt.isG3:
+            self.real_A = Variable(self.input_A)
+            self.real_B = Variable(self.input_B)
         self.cond_A = Variable(self.mask_A)
         self.cond_B = Variable(self.mask_B)
+        self.cond_AA = Variable(self.mask_AA)
+        self.cond_AB = Variable(self.mask_AB)
+        self.cond_BA = Variable(self.mask_BA)
+        self.cond_BB = Variable(self.mask_BB)
 
     def test(self):
         cond_A = Variable(self.mask_A, volatile=True)
@@ -128,17 +145,19 @@ class ChimeraGANModel(BaseModel):
         cond_B = Variable(self.mask_B, volatile=True)
         fake_B = self.netG_B(cond_B)
         self.fake_B = fake_B.data
-        
-        
-        cond_AA, cond_AB = splitMask(cond_A)
+
+
+        cond_AA = Variable(self.mask_AA)
+        cond_AB = Variable(self.mask_AB)
         fake_AB = self.netG_B(cond_A)
         mask_AC = torch.cat((fake_A, fake_AB, cond_AA, cond_AB), 1)
         fake_AC = self.netG_C(mask_AC)
         self.fake_AB = fake_AB.data
         self.fake_AC = fake_AC.data
-        
 
-        cond_BA, cond_BB = splitMask(cond_B)
+
+        cond_BA = Variable(self.mask_BA)
+        cond_BB = Variable(self.mask_BB)
         fake_BA = self.netG_A(cond_B)
         mask_BC = torch.cat((fake_BA, fake_B, cond_BA, cond_BB), 1)
         fake_BC = self.netG_C(mask_BC)
@@ -182,11 +201,6 @@ class ChimeraGANModel(BaseModel):
         loss_D_C *= 0.5
         self.loss_D_C = loss_D_C.data[0]
 
-    def splitMask(in_mask):
-        mask_A = None
-        mask_B = None
-        return mask_A, mask_B
-        
     def backward_GC(self, mod):
         # mod: A, B, C
         lambda_idt = self.opt.identity
@@ -194,12 +208,12 @@ class ChimeraGANModel(BaseModel):
         
         fake_AA = self.netG_A(self.cond_A)
         fake_AB = self.netG_B(self.cond_A)
-        cond_AA, cond_AB = splitMask(self.cond_A)
+        cond_AA, cond_AB = self.cond_AA, self.cond_AB
         real_A = self.real_A * torch.cat((cond_AA, cond_AA, cond_AA), 1)
         
         fake_BA = self.netG_A(self.cond_B)
         fake_BB = self.netG_B(self.cond_B)
-        cond_BA, cond_BB = splitMask(self.cond_B)
+        cond_BA, cond_BB = self.cond_BA, self.cond_BB
         real_B = self.real_B * torch.cat((cond_BB, cond_BB, cond_BB), 1)
             
         mask_AC = torch.cat((fake_AA, fake_AB, cond_AA, cond_AB), 1)
@@ -336,16 +350,18 @@ class ChimeraGANModel(BaseModel):
         return ret_errors
 
     def get_current_visuals(self):
-        real_A = util.tensor2im(self.input_A)
         fake_A = util.tensor2im(self.fake_A)
-        real_B = util.tensor2im(self.input_B)
         fake_B = util.tensor2im(self.fake_B)
         fake_AC = util.tensor2im(self.fake_AC)
         fake_BC = util.tensor2im(self.fake_BC)
-        ret_visuals = OrderedDict([('real_A', real_A), ('fake_A', fake_A),
-                                   ('real_B', real_B), ('fake_B', fake_B),
+
+        ret_visuals = OrderedDict([('fake_A', fake_A), ('fake_B', fake_B),
                                    ('fake_AB', fake_AC), ('fake_BA', fake_BC),
                                    ('fake_AC', fake_AC), ('fake_BC', fake_BC)])
+        if not self.opt.isG3:
+            ret_visuals['real_A'] = util.tensor2im(self.input_A)
+            ret_visuals['real_B'] = util.tensor2im(self.input_B)
+
         if self.opt.isTrain and self.opt.identity > 0.0:
             ret_visuals['idt_AC'] = util.tensor2im(self.idt_AC)
             ret_visuals['idt_BC'] = util.tensor2im(self.idt_BC)

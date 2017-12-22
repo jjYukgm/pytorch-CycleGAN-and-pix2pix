@@ -84,9 +84,14 @@ def combineTransform(A_img, mA_img, opt):
 def splitMask(mA):
 
     return _oneNineSplit(mA)
-def _oneNineSplit(mA):
-    mAA = None
-    mAB = None
+def _oneNineSplit( mA ):
+    '''
+    random center in range 1/3~2/3 h, 1/3~2/3 w
+    random slope deltaH, deltaW
+    random assign mask A, B
+    :param mA:
+    :return:
+    '''
 
     # get bound x, y
     ind = np.where(mA.sum(dim=2).data.numpy() > 0)
@@ -97,8 +102,8 @@ def _oneNineSplit(mA):
     hmax = ind[2].max()
 
     # gen rand in 1/3 bounding
-    wcen = (wmax - wmin) *random.uniform(0, 1) /3. + (wmax + wmin) * 0.5
-    hcen = (hmax - hmin) *random.uniform(0, 1) /3. + (hmax + hmin) * 0.5
+    wcen = (wmax - wmin) * random.uniform(0, 1) / 3. + (wmax + wmin) * 0.5
+    hcen = (hmax - hmin) * random.uniform(0, 1) / 3. + (hmax + hmin) * 0.5
 
     # gen slope
     wsli = random.uniform(-1, 1)
@@ -108,10 +113,10 @@ def _oneNineSplit(mA):
     mAA = mAB = mA.data.numpy()
     hei = mA.data.shape[2]
     wid = mA.data.shape[3]
-    if wsli ==0:
+    if wsli == 0:
         mAB[:, :, 0:hcen, :] = 0.
         mAA[:, :, hcen:, :] = 0.
-    elif hsli ==0:
+    elif hsli == 0:
         mAB[:, :, :, :wcen] = 0.
         mAA[:, :, :, wcen:] = 0.
     else:
@@ -120,17 +125,25 @@ def _oneNineSplit(mA):
             for w in range(wid):
                 if w == wcen:
                     if slope > 0.:
-                        mAA[:,:,h,w] = 0.
+                        mAA[:, :, h, w] = 0.
                     else:
-                        mAB[:,:,h,w] = 0.
+                        mAB[:, :, h, w] = 0.
+                        mAB[:, :, h, w] = 0.
                 elif (h - hcen)/(w - wcen) > slope:
-                    mAA[:,:,h,w] = 0.
+                    mAA[:, :, h, w] = 0.
                 else:
-                    mAB[:,:,h,w] = 0.
+                    mAB[:, :, h, w] = 0.
 
     # random change AA, AB
     if random.uniform(0, 1) > 0.5:
         mAA, mAB = mAB, mAA
+
+    # numpy to tensor
     mAA = torch.from_numpy(mAA)
     mAB = torch.from_numpy(mAB)
     return mAA, mAB
+def convertMask(m_img):
+    mA = None
+    mAA = None
+    mAB = None
+    return mA, mAA, mAB

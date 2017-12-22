@@ -16,6 +16,9 @@ def CreateDataset(opt):
     elif opt.dataset_mode == 'single':
         from data.single_dataset import SingleDataset
         dataset = SingleDataset()
+    elif opt.dataset_mode == 'munaligned':
+        from data.munaligned_dataset import MUnalignedDataset
+        dataset = MUnalignedDataset()
     else:
         raise ValueError("Dataset [%s] not recognized." % opt.dataset_mode)
 
