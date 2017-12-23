@@ -10,7 +10,9 @@ class MUnalignedDataset(BaseDataset):
     def initialize(self, opt):
         self.opt = opt
         self.root = opt.dataroot
-        if opt.isG3:
+        if not hasattr(self.opt, "isG3"):
+            self.opt.isG3 = False
+        if self.opt.isG3:
             self.dir_mA = os.path.join(opt.dataroot, 'testmask')
             self.mA_paths = make_dataset(self.dir_mA)
             self.mA_paths = sorted(self.mA_paths)
