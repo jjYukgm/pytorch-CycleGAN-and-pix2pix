@@ -58,7 +58,8 @@ class MUnalignedDataset(BaseDataset):
         if self.opt.no_rand:
             index_B = index % self.B_size
         else:
-            index_B = random.randint(0, self.B_size - 1)
+            # index_B = random.randint(0, self.B_size - 1)
+            index_B = index % self.B_size
         B_path = self.B_paths[index_B]
         mB_path = self.mB_paths[index_B]
         # print('(A, B) = (%d, %d)' % (index_A, index_B))
@@ -69,12 +70,17 @@ class MUnalignedDataset(BaseDataset):
 
 
         # transform
-        A, mA = combineTransform(A_img, mA_img, self.opt)
-        B, mB = combineTransform(B_img, mB_img, self.opt)
+        try:
+            A, mA, mAA, mAB = combineTransform(A_img, mA_img, self.opt)
+            B, mB, mBB, mBA = combineTransform(B_img, mB_img, self.opt)
+        except Exception as ex:
+            print ex
+            print("Try Next")
+            return self.__getitem__(index +1)
 
         # split mask
-        mAA, mAB = splitMask(mA)
-        mBB, mBA = splitMask(mB)
+        # mAA, mAB = splitMask(mA)
+        # mBB, mBA = splitMask(mB)
 
         if self.opt.which_direction == 'BtoA':
             input_nc = self.opt.output_nc
@@ -83,11 +89,9 @@ class MUnalignedDataset(BaseDataset):
             input_nc = self.opt.input_nc
             output_nc = self.opt.output_nc
 
-        if input_nc == 1:  # RGB to gray
+        if output_nc == 1:  # RGB to gray
             tmp = A[0, ...] * 0.299 + A[1, ...] * 0.587 + A[2, ...] * 0.114
             A = tmp.unsqueeze(0)
-
-        if output_nc == 1:  # RGB to gray
             tmp = B[0, ...] * 0.299 + B[1, ...] * 0.587 + B[2, ...] * 0.114
             B = tmp.unsqueeze(0)
         return {'A': A, 'B': B, 'mA': mA, 'mB': mB,

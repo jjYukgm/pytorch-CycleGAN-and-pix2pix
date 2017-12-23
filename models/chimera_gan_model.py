@@ -20,7 +20,9 @@ class ChimeraGANModel(BaseModel):
 
         nb = opt.batchSize
         size = opt.fineSize
-        if not opt.isG3:
+        if not hasattr(self.opt, "isG3"):
+            self.opt.isG3 = False
+        if not self.opt.isG3:
             self.input_A = self.Tensor(nb, opt.output_nc, size, size)
             self.input_B = self.Tensor(nb, opt.output_nc, size, size)
         self.mask_A = self.Tensor(nb, opt.input_nc, size, size)
@@ -71,6 +73,8 @@ class ChimeraGANModel(BaseModel):
             self.old_lr = opt.lr
             self.fake_A_pool = ImagePool(opt.pool_size)
             self.fake_B_pool = ImagePool(opt.pool_size)
+            self.fake_AC_pool = ImagePool(opt.pool_size)
+            self.fake_BC_pool = ImagePool(opt.pool_size)
             # define loss functions
             self.criterionGAN = networks.GANLoss(use_lsgan=not opt.no_lsgan, tensor=self.Tensor)
             self.criterionCycle = torch.nn.L1Loss()
@@ -194,14 +198,14 @@ class ChimeraGANModel(BaseModel):
         self.loss_D_B = loss_D_B.data[0]
         
     def backward_D_C(self):
-        fake_AC = self.fake_C_pool.query(self.fake_AC)
-        fake_BC = self.fake_C_pool.query(self.fake_BC)
+        fake_AC = self.fake_AC_pool.query(self.fake_AC)
+        fake_BC = self.fake_BC_pool.query(self.fake_BC)
         loss_D_C  = self.backward_D_basic(self.netD_C, self.real_A, fake_AC)
         loss_D_C += self.backward_D_basic(self.netD_C, self.real_B, fake_BC)
         loss_D_C *= 0.5
         self.loss_D_C = loss_D_C.data[0]
 
-    def backward_GC(self, mod):
+    def backward_GC(self):
         # mod: A, B, C
         lambda_idt = self.opt.identity
         lambda_ = self.opt.lambda_C
@@ -224,12 +228,12 @@ class ChimeraGANModel(BaseModel):
         if lambda_idt > 0:
             # G_A should be identity if mask_AC is fed.
             idt_AC = self.netG_C(mask_AC)
-            idt_AC *= torch.cat((cond_AA, cond_AA, cond_AA), 1)
+            idt_AC = idt_AC * torch.cat((cond_AA, cond_AA, cond_AA), 1)
             loss_idt_AC = self.criterionIdt(idt_AC, real_A) * lambda_ * lambda_idt
 
             # G_A should be identity if mask_BC is fed.
             idt_BC = self.netG_C(mask_BC)
-            idt_BC *= torch.cat((cond_BB, cond_BB, cond_BB), 1)
+            idt_BC = idt_BC * torch.cat((cond_BB, cond_BB, cond_BB), 1)
             loss_idt_BC = self.criterionIdt(idt_BC, real_B) * lambda_ * lambda_idt
 
             self.idt_AC = idt_AC.data

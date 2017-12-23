@@ -50,6 +50,8 @@ def __scale_width(img, target_width):
 
 def combineTransform(A_img, mA_img, opt):
 
+    if checkZMask(mA_img):
+        raise Exception('The mask is whole black')
     # conbine image and mask to do pair transform
     wid, hei = A_img.size
     AmA = Image.new('RGB', (wid*2, hei))
@@ -78,9 +80,30 @@ def combineTransform(A_img, mA_img, opt):
 
     # mA to grayscale
     tmp = mA[0, ...] * 0.299 + mA[1, ...] * 0.587 + mA[2, ...] * 0.114
+    '''
+    if checkZMask(tmp):
+        if not hasattr(opt, "checkTime"):
+            opt.checkTime = 1
+        else:
+            opt.checkTime += 1
+        if opt.checkTime > 30:
+            raise Exception("TiError", 'Random too many times')
+        return combineTransform(A_img, mA_img, opt)
+    opt.checkTime = 0
+    '''
     mA = tmp.unsqueeze(0)
+    mAA, mAB = splitMask(tmp)
 
-    return A, mA
+    return A, mA, mAA, mAB
+def checkZMask(mA):
+    if isinstance(mA, Image.Image):
+        mA = np.array(mA)
+    else:
+        mA = mA.numpy()
+    ind = np.where(mA.sum(0) > 0)
+    ind2 = np.where(mA.sum(1) > 0)
+    return len(ind[0])==0 or len(ind2[0])==0
+
 def splitMask(mA):
 
     return _oneNineSplit(mA)
@@ -92,14 +115,21 @@ def _oneNineSplit( mA ):
     :param mA:
     :return:
     '''
-
+    # print("mA.size: "+str(mA.numpy().shape))
     # get bound x, y
-    ind = np.where(mA.sum(dim=2).data.numpy() > 0)
-    wmin = ind[2].min()
-    wmax = ind[2].max()
-    ind = np.where(mA.sum(dim=3).data.numpy() > 0)
-    hmin = ind[2].min()
-    hmax = ind[2].max()
+    tmp = mA.numpy()
+    ind = np.where(tmp.sum(0) > 0)
+    try:
+        wmin = ind[0].min()
+        wmax = ind[0].max()
+    except:
+        wmin = wmax = tmp.shape[1]
+    ind = np.where(tmp.sum(1) > 0)
+    try:
+        hmin = ind[0].min()
+        hmax = ind[0].max()
+    except:
+        hmin = hmax = tmp.shape[0]
 
     # gen rand in 1/3 bounding
     wcen = (wmax - wmin) * random.uniform(0, 1) / 3. + (wmax + wmin) * 0.5
@@ -110,29 +140,29 @@ def _oneNineSplit( mA ):
     hsli = random.uniform(-1, 1)
 
     # split the mask
-    mAA = mAB = mA.data.numpy()
-    hei = mA.data.shape[2]
-    wid = mA.data.shape[3]
+    mAA = mAB = mA.numpy()
+    hei = mAA.shape[0]
+    wid = mAA.shape[1]
     if wsli == 0:
-        mAB[:, :, 0:hcen, :] = 0.
-        mAA[:, :, hcen:, :] = 0.
+        mAB[0:hcen, :] = 0.
+        mAA[hcen:, :] = 0.
     elif hsli == 0:
-        mAB[:, :, :, :wcen] = 0.
-        mAA[:, :, :, wcen:] = 0.
+        mAB[:, :wcen] = 0.
+        mAA[:, wcen:] = 0.
     else:
         slope = hsli / wsli
         for h in range(hei):
             for w in range(wid):
                 if w == wcen:
                     if slope > 0.:
-                        mAA[:, :, h, w] = 0.
+                        mAA[h, w] = 0.
                     else:
-                        mAB[:, :, h, w] = 0.
-                        mAB[:, :, h, w] = 0.
+                        mAB[:h, w] = 0.
+                        mAB[h, w] = 0.
                 elif (h - hcen)/(w - wcen) > slope:
-                    mAA[:, :, h, w] = 0.
+                    mAA[h, w] = 0.
                 else:
-                    mAB[:, :, h, w] = 0.
+                    mAB[h, w] = 0.
 
     # random change AA, AB
     if random.uniform(0, 1) > 0.5:
@@ -141,6 +171,8 @@ def _oneNineSplit( mA ):
     # numpy to tensor
     mAA = torch.from_numpy(mAA)
     mAB = torch.from_numpy(mAB)
+    mAA = mAA.unsqueeze(0)
+    mAB = mAB.unsqueeze(0)
     return mAA, mAB
 def convertMask(m_img):
     mA = None
