@@ -1,7 +1,6 @@
 #!/bin/bash
 
-root='/home/tako/datasets/oxford_pet'
-sproot='/home/tako/1061/ce_deep_learn/fp/data/Animals_with_Attributes2/testimg'
+root='/Disk2/cedl/oxford_pet'
 tard='cat,dog'
 trted='oxford_pet'
 
