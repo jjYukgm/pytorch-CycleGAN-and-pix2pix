@@ -354,12 +354,18 @@ class ChimeraGANModel(BaseModel):
         return ret_errors
 
     def get_current_visuals(self):
+        cond_A = util.tensor2im(self.cond_A)
+        cond_AA = util.tensor2im(self.cond_AA)
+        cond_B = util.tensor2im(self.cond_B)
+        cond_BB = util.tensor2im(self.cond_BB)
         fake_A = util.tensor2im(self.fake_A)
         fake_B = util.tensor2im(self.fake_B)
         fake_AC = util.tensor2im(self.fake_AC)
         fake_BC = util.tensor2im(self.fake_BC)
 
         ret_visuals = OrderedDict([('fake_A', fake_A), ('fake_B', fake_B),
+                                   ('cond_A', cond_A), ('cond_AA', cond_AA),
+                                   ('cond_B', cond_B), ('cond_BB', cond_BB),
                                    ('fake_AB', fake_AC), ('fake_BA', fake_BC),
                                    ('fake_AC', fake_AC), ('fake_BC', fake_BC)])
         if not self.opt.isG3:

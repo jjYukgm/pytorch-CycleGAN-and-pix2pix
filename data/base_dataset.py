@@ -80,6 +80,7 @@ def combineTransform(A_img, mA_img, opt):
 
     # mA to grayscale
     tmp = mA[0, ...] * 0.299 + mA[1, ...] * 0.587 + mA[2, ...] * 0.114
+    tmp /= 255.
     '''
     if checkZMask(tmp):
         if not hasattr(opt, "checkTime"):
