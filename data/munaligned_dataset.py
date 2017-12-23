@@ -75,6 +75,8 @@ class MUnalignedDataset(BaseDataset):
             B, mB, mBB, mBA = combineTransform(B_img, mB_img, self.opt)
         except Exception as ex:
             print ex
+            print("A_path: " + A_path)
+            print("B_path: " + B_path)
             print("Try Next")
             return self.__getitem__(index +1)
 
