@@ -80,7 +80,7 @@ def combineTransform(A_img, mA_img, opt):
 
     # mA to grayscale
     tmp = mA[0, ...] * 0.299 + mA[1, ...] * 0.587 + mA[2, ...] * 0.114
-    tmp /= 255.
+    # tmp /= 255.
     '''
     if checkZMask(tmp):
         if not hasattr(opt, "checkTime"):
@@ -119,13 +119,13 @@ def _oneNineSplit( mA ):
     # print("mA.size: "+str(mA.numpy().shape))
     # get bound x, y
     tmp = mA.numpy()
-    ind = np.where(tmp.sum(0) > 0)
+    ind = np.where(tmp.sum(0) > 0.5)
     try:
         wmin = ind[0].min()
         wmax = ind[0].max()
     except:
         wmin = wmax = tmp.shape[1]
-    ind = np.where(tmp.sum(1) > 0)
+    ind = np.where(tmp.sum(1) > 0.5)
     try:
         hmin = ind[0].min()
         hmax = ind[0].max()
@@ -141,29 +141,25 @@ def _oneNineSplit( mA ):
     hsli = random.uniform(-1, 1)
 
     # split the mask
-    mAA = mAB = mA.numpy()
+    mAA = tmp.copy()
+    mAB = tmp.copy()
+    min_val = mAA.min()
     hei = mAA.shape[0]
     wid = mAA.shape[1]
     if wsli == 0:
-        mAB[0:hcen, :] = 0.
-        mAA[hcen:, :] = 0.
+        mAB[0:hcen, :] = min_val
+        mAA[hcen:, :] = min_val
     elif hsli == 0:
-        mAB[:, :wcen] = 0.
-        mAA[:, wcen:] = 0.
+        mAB[:, :wcen] = min_val
+        mAA[:, wcen:] = min_val
     else:
         slope = hsli / wsli
         for h in range(hei):
             for w in range(wid):
-                if w == wcen:
-                    if slope > 0.:
-                        mAA[h, w] = 0.
-                    else:
-                        mAB[:h, w] = 0.
-                        mAB[h, w] = 0.
-                elif (h - hcen)/(w - wcen) > slope:
-                    mAA[h, w] = 0.
+                if (h - hcen) > (w - wcen) * slope:
+                    mAA[h, w] = min_val
                 else:
-                    mAB[h, w] = 0.
+                    mAB[h, w] = min_val
 
     # random change AA, AB
     if random.uniform(0, 1) > 0.5:
