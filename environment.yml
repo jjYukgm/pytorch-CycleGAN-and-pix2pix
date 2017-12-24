@@ -1,0 +1,21 @@
+name: cycgan
+channels:
+    - menpo
+    - soumith
+dependencies:
+    - python==2.7.14
+    - opencv3=3.1.0
+    - numpy==1.13.1
+    - scipy==0.19.1
+    - pytorch==0.3.1
+    - torchvision==0.2.0
+    - pip:
+        - Pillow==4.2.1
+        - PyOpenGL==3.1.0
+        - python-dateutil==2.6.1
+        - pyyaml==3.12
+        - easydict==1.7
+        - cupy==1.0.1; 'linux' in sys_platform
+        - matplotlib
+        - visdom
+        - dominate
