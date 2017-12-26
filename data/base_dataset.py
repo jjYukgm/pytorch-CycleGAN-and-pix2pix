@@ -143,7 +143,7 @@ def _oneNineSplit( mA ):
     # split the mask
     mAA = tmp.copy()
     mAB = tmp.copy()
-    min_val = mAA.min()
+    min_val = -1 # mAA.min()
     hei = mAA.shape[0]
     wid = mAA.shape[1]
     if wsli == 0:

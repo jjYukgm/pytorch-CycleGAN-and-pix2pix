@@ -29,4 +29,4 @@ class TrainOptions(BaseOptions):
         self.parser.add_argument('--identity', type=float, default=0.5, help='use identity mapping. Setting identity other than 1 has an effect of scaling the weight of the identity mapping loss. For example, if the weight of the identity loss should be 10 times smaller than the weight of the reconstruction loss, please set optidentity = 0.1')
 
         self.isTrain = True
-True
+        self.parser.add_argument('--isAB', action='store_true', help='chimeraGAN: true: (A,B) , False: C')
