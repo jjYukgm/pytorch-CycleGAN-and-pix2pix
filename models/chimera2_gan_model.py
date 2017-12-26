@@ -11,7 +11,7 @@ from . import networks
 import sys
 
 
-class ChimeraGANModel(BaseModel):
+class Chimera2GANModel(BaseModel):
     def name(self):
         return 'Chimera2GANModel'
 
@@ -20,10 +20,8 @@ class ChimeraGANModel(BaseModel):
 
         nb = opt.batchSize
         size = opt.fineSize
-        if not hasattr(self.opt, "isG3"):
-            self.isG3 = False
-        else:
-            self.isG3 = opt.isG3
+        self.isG3 = opt.isG3
+
         if not self.isG3:
             self.input_A = self.Tensor(nb, opt.output_nc, size, size)
             self.input_B = self.Tensor(nb, opt.output_nc, size, size)
@@ -48,26 +46,23 @@ class ChimeraGANModel(BaseModel):
                                          opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
         self.netG_mB = networks.define_G(opt.input_nc, opt.output_nc,
                                          opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
-        if not self.isG3:
-            self.netG_Am = networks.define_G(opt.output_nc, opt.input_nc,
-                                             opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
-            self.netG_Bm = networks.define_G(opt.output_nc, opt.input_nc,
-                                             opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
-        else:
+        if self.isG3:
             self.netG_mC = networks.define_G(2* opt.output_nc + 2* opt.input_nc, opt.output_nc,
-                                             opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
-            self.netG_Cm = networks.define_G(opt.output_nc, 2* opt.input_nc,
                                              opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
 
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
-            self.netD_mA = networks.define_D(opt.output_nc, opt.ndf,
-                                             opt.which_model_netD,
-                                             opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
-            self.netD_mB = networks.define_D(opt.output_nc, opt.ndf,
-                                             opt.which_model_netD,
-                                             opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
             if not self.isG3:
+                self.netG_Am = networks.define_G(opt.output_nc, opt.input_nc,
+                                                 opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
+                self.netG_Bm = networks.define_G(opt.output_nc, opt.input_nc,
+                                                 opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
+                self.netD_mA = networks.define_D(opt.output_nc, opt.ndf,
+                                                 opt.which_model_netD,
+                                                 opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
+                self.netD_mB = networks.define_D(opt.output_nc, opt.ndf,
+                                                 opt.which_model_netD,
+                                                 opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
                 self.netD_Am = networks.define_D(opt.input_nc, opt.ndf,
                                                 opt.which_model_netD,
                                                 opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
@@ -75,29 +70,32 @@ class ChimeraGANModel(BaseModel):
                                                 opt.which_model_netD,
                                                 opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
             else:
+                self.netG_Cm = networks.define_G(opt.output_nc, 2* opt.input_nc,
+                                                 opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
                 self.netD_mC = networks.define_D(opt.output_nc, opt.ndf,
                                                 opt.which_model_netD,
                                                 opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
                 self.netD_Cm = networks.define_D(2* opt.input_nc, opt.ndf,
                                                 opt.which_model_netD,
                                                 opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
-        if not self.isTrain or opt.continue_train:
+        if self.isG3 or opt.continue_train:
             which_epoch = opt.which_epoch
             self.load_network(self.netG_mA, 'G_mA', which_epoch)
             self.load_network(self.netG_mB, 'G_mB', which_epoch)
-            if not self.isG3:
-                self.load_network(self.netG_Am, 'G_Am', which_epoch)
-                self.load_network(self.netG_Bm, 'G_Bm', which_epoch)
-            else:
+        if not self.isTrain or opt.continue_train:
+            which_epoch = opt.which_epoch
+            if self.isG3:
                 self.load_network(self.netG_mC, 'G_mC', which_epoch)
-                self.load_network(self.netG_Cm, 'G_Cm', which_epoch)
             if self.isTrain:
                 if not self.isG3:
+                    self.load_network(self.netG_Am, 'G_Am', which_epoch)
+                    self.load_network(self.netG_Bm, 'G_Bm', which_epoch)
                     self.load_network(self.netD_mA, 'D_mA', which_epoch)
                     self.load_network(self.netD_mB, 'D_mB', which_epoch)
                     self.load_network(self.netD_Am, 'D_Am', which_epoch)
                     self.load_network(self.netD_Bm, 'D_Bm', which_epoch)
                 else:
+                    self.load_network(self.netG_Cm, 'G_Cm', which_epoch)
                     self.load_network(self.netD_mC, 'D_mC', which_epoch)
                     self.load_network(self.netD_Cm, 'D_Cm', which_epoch)
 
@@ -143,15 +141,14 @@ class ChimeraGANModel(BaseModel):
         networks.print_network(self.netG_mB)
         if self.isG3:
             networks.print_network(self.netG_mC)
-            networks.print_network(self.netG_Cm)
-        else:
-            networks.print_network(self.netG_Am)
-            networks.print_network(self.netG_Bm)
         if self.isTrain:
             if self.isG3:
+                networks.print_network(self.netG_Cm)
                 networks.print_network(self.netD_Cm)
                 networks.print_network(self.netD_mC)
             else:
+                networks.print_network(self.netG_Am)
+                networks.print_network(self.netG_Bm)
                 networks.print_network(self.netD_mA)
                 networks.print_network(self.netD_mB)
                 networks.print_network(self.netD_Am)
@@ -184,17 +181,21 @@ class ChimeraGANModel(BaseModel):
     def forward(self):
         self.cond_A = Variable(self.mask_A)
         self.cond_B = Variable(self.mask_B)
-        self.cond_AA = Variable(self.mask_AA)
-        self.cond_AB = Variable(self.mask_AB)
-        self.cond_BA = Variable(self.mask_BA)
-        self.cond_BB = Variable(self.mask_BB)
-        self.mask_norm = Variable(torch.DoubleTensor([1]))
-        if not self.isG3:
-            mnorm = torch.DoubleTensor([1]).expand_as(self.input_A)
-            self.real_A = Variable(self.input_A * (torch.cat((self.cond_A, self.cond_A, self.cond_A), 1) + \
-                                   mnorm) / (mnorm+mnorm))
-            self.real_B = Variable(self.input_B * (torch.cat((self.cond_B, self.cond_B, self.cond_B), 1) + \
-                                   mnorm / (mnorm+mnorm)))
+        self.mask_norm = Variable(self.Tensor([1]))
+
+        if self.isG3:
+            self.cond_AA = Variable(self.mask_AA)
+            self.cond_AB = Variable(self.mask_AB)
+            self.cond_BA = Variable(self.mask_BA)
+            self.cond_BB = Variable(self.mask_BB)
+        else:
+            mnorn = self.Tensor([1]).expand_as(self.mask_A)
+            mask_tmp = self.mask_A
+            mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+            self.real_A = Variable(self.input_A * mask_tmp)
+            mask_tmp = self.mask_B
+            mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+            self.real_B = Variable(self.input_B * mask_tmp)
 
     def test(self):
         cond_A = Variable(self.mask_A, volatile=True)
@@ -205,7 +206,6 @@ class ChimeraGANModel(BaseModel):
         fake_B = self.netG_mB(cond_B)
         self.fake_mB = fake_B.data
 
-
         cond_AA = Variable(self.mask_AA)
         cond_AB = Variable(self.mask_AB)
         fake_AB = self.netG_mB(cond_A)
@@ -214,7 +214,6 @@ class ChimeraGANModel(BaseModel):
         self.fake_AB = fake_AB.data
         self.fake_AC = fake_AC.data
 
-
         cond_BA = Variable(self.mask_BA)
         cond_BB = Variable(self.mask_BB)
         fake_BA = self.netG_mA(cond_B)
@@ -222,8 +221,6 @@ class ChimeraGANModel(BaseModel):
         fake_BC = self.netG_mC(mask_BC)
         self.fake_BA = fake_BA.data
         self.fake_BC = fake_BC.data
-        
-        
 
     # get image paths
     def get_image_paths(self):
@@ -287,19 +284,19 @@ class ChimeraGANModel(BaseModel):
         
         fake_AA = self.netG_mA(self.cond_A)
         fake_AB = self.netG_mB(self.cond_A)
-        real_AA = fake_AA * (torch.cat((self.cond_AA, self.cond_AA, self.cond_AA), 1) + \
+        real_AA = fake_AA * (torch.cat((self.cond_AA, self.cond_AA, self.cond_AA), 1) +
                              self.mask_norm.expand_as(fake_AA)) / \
                             (self.mask_norm * 2).expand_as(fake_AA)
-        real_AB = fake_AB * (torch.cat((self.cond_AB, self.cond_AB, self.cond_AB), 1) + \
+        real_AB = fake_AB * (torch.cat((self.cond_AB, self.cond_AB, self.cond_AB), 1) +
                              self.mask_norm.expand_as(fake_AA)) / \
                             (self.mask_norm * 2).expand_as(fake_AA)
         
         fake_BA = self.netG_mA(self.cond_B)
         fake_BB = self.netG_mB(self.cond_B)
-        real_BB = fake_BB * (torch.cat((self.cond_BB, self.cond_BB, self.cond_BB), 1) + \
+        real_BB = fake_BB * (torch.cat((self.cond_BB, self.cond_BB, self.cond_BB), 1) +
                   self.mask_norm.expand_as(fake_BB)) / \
                 (self.mask_norm * 2).expand_as(fake_BB)
-        real_BA = fake_BA * (torch.cat((self.cond_BA, self.cond_BA, self.cond_BA), 1) + \
+        real_BA = fake_BA * (torch.cat((self.cond_BA, self.cond_BA, self.cond_BA), 1) +
                   self.mask_norm.expand_as(fake_BB)) / \
                 (self.mask_norm * 2).expand_as(fake_BB)
             
@@ -317,8 +314,6 @@ class ChimeraGANModel(BaseModel):
         fake_BC = self.netG_mC(mask_BC)
         pred_fake = self.netD_mC(fake_BC)
         loss_G_BC = self.criterionGAN(pred_fake, True)
-
-        # patch loss
 
         # cycle loss
         fake_ACm = self.netG_Cm(fake_AC)
@@ -361,8 +356,9 @@ class ChimeraGANModel(BaseModel):
             self.loss_idt_BC = 0
         
         # combined loss
-        loss_G = loss_G_ACm + loss_G_BCm + loss_idt_AC + loss_idt_BC + \
-                 loss_cycle_AC + loss_cycle_BC
+        loss_G = loss_G_AC + loss_G_BC + loss_G_ACm + loss_G_BCm + \
+                 loss_cycle_AC + loss_cycle_BC +\
+                 loss_idt_AC + loss_idt_BC
         loss_G.backward()
         
         
@@ -374,12 +370,12 @@ class ChimeraGANModel(BaseModel):
         self.fake_BC = fake_BC.data
         self.fake_ACm = fake_ACm.data
         self.fake_BCm = fake_BCm.data
+        self.loss_G_AC = loss_G_AC.data[0]
+        self.loss_G_BC = loss_G_BC.data[0]
         self.loss_G_ACm = loss_G_ACm.data[0]
         self.loss_G_BCm = loss_G_BCm.data[0]
         self.loss_cycle_AC = loss_cycle_AC.data[0]
         self.loss_cycle_BC = loss_cycle_BC.data[0]
-        self.loss_G_AC = loss_G_AC.data[0]
-        self.loss_G_BC = loss_G_BC.data[0]
     
     def backward_G(self):
         # mod: A, B
@@ -406,15 +402,15 @@ class ChimeraGANModel(BaseModel):
 
         # Cycle loss G_A(G_A(A))
         rec_Am = self.netG_Am(fake_mA)
-        loss_cycle_Am = self.criterionCycle(rec_Am, self.real_A) * lambda_A
+        loss_cycle_Am = self.criterionCycle(rec_Am, self.cond_A) * lambda_A
         rec_mA = self.netG_mA(fake_Am)
-        loss_cycle_mA = self.criterionCycle(rec_mA, self.cond_A) * lambda_A
+        loss_cycle_mA = self.criterionCycle(rec_mA, self.real_A) * lambda_A
 
         # Cycle loss G_B(G_A(B))
         rec_Bm = self.netG_Bm(fake_mB)
-        loss_cycle_Bm = self.criterionCycle(rec_Bm, self.real_B) * lambda_B
+        loss_cycle_Bm = self.criterionCycle(rec_Bm, self.cond_B) * lambda_B
         rec_mB = self.netG_mB(fake_Bm)
-        loss_cycle_mB = self.criterionCycle(rec_mB, self.cond_B) * lambda_B
+        loss_cycle_mB = self.criterionCycle(rec_mB, self.real_B) * lambda_B
 
         # Identity loss
         if lambda_idt > 0:
@@ -564,10 +560,10 @@ class ChimeraGANModel(BaseModel):
 
     def save(self, label):
         self.save_network(self.netG_mA, 'G_mA', label, self.gpu_ids)
-        self.save_network(self.netD_mA, 'D_mA', label, self.gpu_ids)
         self.save_network(self.netG_mB, 'G_mB', label, self.gpu_ids)
-        self.save_network(self.netD_mB, 'D_mB', label, self.gpu_ids)
         if not self.isG3:
+            self.save_network(self.netD_mA, 'D_mA', label, self.gpu_ids)
+            self.save_network(self.netD_mB, 'D_mB', label, self.gpu_ids)
             self.save_network(self.netG_Am, 'G_Am', label, self.gpu_ids)
             self.save_network(self.netD_Am, 'D_Am', label, self.gpu_ids)
             self.save_network(self.netG_Bm, 'G_Bm', label, self.gpu_ids)

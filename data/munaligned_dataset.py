@@ -10,9 +10,7 @@ class MUnalignedDataset(BaseDataset):
     def initialize(self, opt):
         self.opt = opt
         self.root = opt.dataroot
-        if not hasattr(self.opt, "isG3"):
-            self.opt.isG3 = False
-        if self.opt.isG3:
+        if self.opt.isG3 and not self.opt.isTrain:
             self.dir_mA = os.path.join(opt.dataroot, 'testmask')
             self.mA_paths = make_dataset(self.dir_mA)
             self.mA_paths = sorted(self.mA_paths)
@@ -65,8 +63,8 @@ class MUnalignedDataset(BaseDataset):
         # print('(A, B) = (%d, %d)' % (index_A, index_B))
         A_img = Image.open(A_path).convert('RGB')
         B_img = Image.open(B_path).convert('RGB')
-        mA_img = Image.open(mB_path).convert('RGB')
-        mB_img = Image.open(mA_path).convert('RGB')
+        mA_img = Image.open(mA_path).convert('RGB')
+        mB_img = Image.open(mB_path).convert('RGB')
 
 
         # transform

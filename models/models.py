@@ -10,6 +10,10 @@ def create_model(opt):
         assert(opt.dataset_mode == 'munaligned')
         from .chimera_gan_model import ChimeraGANModel
         model = ChimeraGANModel()
+    elif opt.model == 'chimera2_gan':
+        assert(opt.dataset_mode == 'munaligned')
+        from .chimera2_gan_model import Chimera2GANModel
+        model = Chimera2GANModel()
     elif opt.model == 'cycle_gan':
         assert(opt.dataset_mode == 'unaligned')
         from .cycle_gan_model import CycleGANModel
