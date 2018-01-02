@@ -383,9 +383,13 @@ class Chimera2GANModel(BaseModel):
         lambda_A = self.opt.lambda_A
         lambda_B = self.opt.lambda_B
 
-
+        # normalize the fake
+        mnorn = Variable(self.Tensor([1]).expand_as(self.mask_A))
         # GAN loss D_A(G_A(A))
         fake_mA = self.netG_mA(self.cond_A)
+        mask_tmp = self.cond_A
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        fake_mA = fake_mA * mask_tmp
         pred_fake = self.netD_mA(fake_mA)
         loss_G_mA = self.criterionGAN(pred_fake, True)
         fake_Am = self.netG_Am(self.real_A)
@@ -394,6 +398,9 @@ class Chimera2GANModel(BaseModel):
 
         # GAN loss D_B(G_B(B))
         fake_mB = self.netG_mB(self.cond_B)
+        mask_tmp = self.cond_B
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        fake_mB = fake_mB * mask_tmp
         pred_fake = self.netD_mB(fake_mB)
         loss_G_mB = self.criterionGAN(pred_fake, True)
         fake_Bm = self.netG_Bm(self.real_B)
@@ -404,12 +411,18 @@ class Chimera2GANModel(BaseModel):
         rec_Am = self.netG_Am(fake_mA)
         loss_cycle_Am = self.criterionCycle(rec_Am, self.cond_A) * lambda_A
         rec_mA = self.netG_mA(fake_Am)
+        mask_tmp = self.cond_A
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        rec_mA = rec_mA * mask_tmp
         loss_cycle_mA = self.criterionCycle(rec_mA, self.real_A) * lambda_A
 
         # Cycle loss G_B(G_A(B))
         rec_Bm = self.netG_Bm(fake_mB)
         loss_cycle_Bm = self.criterionCycle(rec_Bm, self.cond_B) * lambda_B
         rec_mB = self.netG_mB(fake_Bm)
+        mask_tmp = self.cond_B
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        rec_mB = rec_mB * mask_tmp
         loss_cycle_mB = self.criterionCycle(rec_mB, self.real_B) * lambda_B
 
         # Identity loss
