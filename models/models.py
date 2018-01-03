@@ -14,7 +14,7 @@ def create_model(opt):
         assert(opt.dataset_mode == 'munaligned')
         from .chimera2_gan_model import Chimera2GANModel
         model = Chimera2GANModel()
-    elif opt.model == 'Chimera3GANModel':
+    elif opt.model == 'chimera3_gan':
         assert(opt.dataset_mode == 'munaligned')
         from .chimera3_gan_model import Chimera3GANModel
         model = Chimera3GANModel()
