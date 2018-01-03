@@ -314,7 +314,7 @@ class Chimera3GANModel(BaseModel):
         
         mnorn = Variable(self.Tensor([1]).expand_as(self.mask_A))
         # GAN loss D_A(G_A(A))
-        fake_A = self.netG_A(mask_A)
+        fake_A = self.netG_A(self.mask_A)
         mask_tmp = self.cond_A
         mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
         fake_A = fake_A * mask_tmp
@@ -322,7 +322,7 @@ class Chimera3GANModel(BaseModel):
         loss_G_A = self.criterionGAN(pred_fake, True)
 
         # GAN loss D_B(G_B(B))
-        fake_B = self.netG_B(mask_B)
+        fake_B = self.netG_B(self.mask_B)
         mask_tmp = self.cond_B
         mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
         fake_B = fake_B * mask_tmp
