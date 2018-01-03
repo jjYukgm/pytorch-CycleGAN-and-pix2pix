@@ -384,9 +384,9 @@ class Chimera2GANModel(BaseModel):
         lambda_B = self.opt.lambda_B
 
         # normalize the fake
-        mnorn = Variable(self.Tensor([1]).expand_as(self.mask_A))
         # GAN loss D_A(G_A(A))
         fake_mA = self.netG_mA(self.cond_A)
+        mnorn = self.mask_norm.expand_as(fake_mA)
         mask_tmp = self.cond_A
         mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
         fake_mA = fake_mA * mask_tmp
@@ -529,9 +529,9 @@ class Chimera2GANModel(BaseModel):
             return ret_errors
 
     def get_current_visuals(self):
+        cond_A = util.tensor2im(self.mask_A)
+        cond_B = util.tensor2im(self.mask_B)
         if not self.isG3:
-            cond_A = util.tensor2im(self.mask_A)
-            cond_B = util.tensor2im(self.mask_B)
             fake_mA = util.tensor2im(self.fake_mA)
             fake_mB = util.tensor2im(self.fake_mB)
             fake_Am = util.tensor2im(self.fake_Am)
@@ -552,9 +552,7 @@ class Chimera2GANModel(BaseModel):
                                                            ('input_A', input_A), ('input_B', input_B),
                                                            ('real_A', real_A), ('real_B', real_B)])
         else:
-            cond_A = util.tensor2im(self.mask_A)
             cond_AA = util.tensor2im(self.mask_AA)
-            cond_B = util.tensor2im(self.mask_B)
             cond_BB = util.tensor2im(self.mask_BB)
             fake_AA = util.tensor2im(self.fake_AA)
             fake_BB = util.tensor2im(self.fake_BB)

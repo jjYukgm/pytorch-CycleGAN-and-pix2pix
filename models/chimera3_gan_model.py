@@ -312,9 +312,9 @@ class Chimera3GANModel(BaseModel):
         lambda_B = self.opt.lambda_B
         
         
-        mnorn = Variable(self.Tensor([1]).expand_as(self.mask_A))
         # GAN loss D_A(G_A(A))
-        fake_A = self.netG_A(self.mask_A)
+        fake_A = self.netG_A(self.cond_A)
+        mnorn = self.mask_norm.expand_as(fake_A)
         mask_tmp = self.cond_A
         mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
         fake_A = fake_A * mask_tmp
@@ -322,7 +322,7 @@ class Chimera3GANModel(BaseModel):
         loss_G_A = self.criterionGAN(pred_fake, True)
 
         # GAN loss D_B(G_B(B))
-        fake_B = self.netG_B(self.mask_B)
+        fake_B = self.netG_B(self.cond_B)
         mask_tmp = self.cond_B
         mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
         fake_B = fake_B * mask_tmp
@@ -336,8 +336,6 @@ class Chimera3GANModel(BaseModel):
             # G_A should be identity if real_B is fed.
             loss_idt_B = self.criterionIdt(fake_B, self.real_B) * lambda_B * lambda_idt
 
-            self.idt_A = idt_A.data
-            self.idt_B = idt_B.data
             self.loss_idt_A = loss_idt_A.data[0]
             self.loss_idt_B = loss_idt_B.data[0]
         else:
