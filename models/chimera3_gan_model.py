@@ -421,8 +421,8 @@ class Chimera3GANModel(BaseModel):
         else:
             fake_A = util.tensor2im(self.fake_A)
             fake_B = util.tensor2im(self.fake_B)
-            real_A = util.tensor2im(self.real_A)
-            real_B = util.tensor2im(self.real_B)
+            real_A = util.tensor2im(self.real_A.data)
+            real_B = util.tensor2im(self.real_B.data)
             input_A = util.tensor2im(self.input_A)
             input_B = util.tensor2im(self.input_B)
 
