@@ -419,22 +419,17 @@ class Chimera3GANModel(BaseModel):
                 ret_visuals['idt_AC'] = util.tensor2im(self.idt_AC)
                 ret_visuals['idt_BC'] = util.tensor2im(self.idt_BC)
         else:
-            cond_AA = util.tensor2im(self.mask_AA)
-            cond_BB = util.tensor2im(self.mask_BB)
             fake_A = util.tensor2im(self.fake_A)
             fake_B = util.tensor2im(self.fake_B)
-            fake_AB = util.tensor2im(self.fake_AB)
-            fake_BA = util.tensor2im(self.fake_BA)
-            fake_AC = util.tensor2im(self.fake_AC)
-            fake_BC = util.tensor2im(self.fake_BC)
-            real_A = util.tensor2im(self.input_A)
-            real_B = util.tensor2im(self.input_B)
+            real_A = util.tensor2im(self.real_A)
+            real_B = util.tensor2im(self.real_B)
+            input_A = util.tensor2im(self.input_A)
+            input_B = util.tensor2im(self.input_B)
 
             ret_visuals = OrderedDict([('fake_A', fake_A), ('fake_B', fake_B),
-                                       ('cond_A', cond_A), ('cond_AA', cond_AA),
-                                       ('cond_B', cond_B), ('cond_BB', cond_BB),
-                                       ('fake_AB', fake_AB), ('fake_BA', fake_BA),
-                                       ('real_A', real_A), ('real_B', real_B)])
+                                       ('cond_A', cond_A), ('cond_B', cond_B),
+                                       ('real_A', real_A), ('real_B', real_B),
+                                       ('input_A', input_A), ('input_B', input_B)])
 
         return ret_visuals
 

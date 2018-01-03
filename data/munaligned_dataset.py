@@ -57,7 +57,8 @@ class MUnalignedDataset(BaseDataset):
             index_B = index % self.B_size
         else:
             # index_B = random.randint(0, self.B_size - 1)
-            index_B = index % self.B_size
+            pass
+        index_B = index % self.B_size
         B_path = self.B_paths[index_B]
         mB_path = self.mB_paths[index_B]
         # print('(A, B) = (%d, %d)' % (index_A, index_B))
