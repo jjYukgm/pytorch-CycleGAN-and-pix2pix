@@ -216,10 +216,12 @@ class Chimera3GANModel(BaseModel):
         self.loss_D_B = loss_D_B.data[0]
         
     def backward_D_C(self):
-        fake_AC = self.fake_AC_pool.query(self.fake_AC)
-        fake_BC = self.fake_BC_pool.query(self.fake_BC)
-        loss_D_C  = self.backward_D_basic(self.netD_C, self.fake_AA, fake_AC)
-        loss_D_C += self.backward_D_basic(self.netD_C, self.fake_BB, fake_BC)
+        fake_AC = self.fake_A_pool.query(self.fake_AC)
+        fake_BC = self.fake_B_pool.query(self.fake_BC)
+        fake_AA = Variable(self.fake_AA)
+        fake_BB = Variable(self.fake_BB)
+        loss_D_C  = self.backward_D_basic(self.netD_C, fake_AA, fake_AC)
+        loss_D_C += self.backward_D_basic(self.netD_C, fake_BB, fake_BC)
         loss_D_C *= 0.5
         self.loss_D_C = loss_D_C.data[0]
 
@@ -228,26 +230,53 @@ class Chimera3GANModel(BaseModel):
         lambda_idt = self.opt.identity
         lambda_ = self.opt.lambda_C
         
+        
         fake_AA = self.netG_A(self.cond_A)
         fake_AB = self.netG_B(self.cond_A)
-        real_AA = fake_AA * (torch.cat((self.cond_AA, self.cond_AA, self.cond_AA), 1) +
-                             self.mask_norm.expand_as(fake_AA)) / \
-                            (self.mask_norm * 2).expand_as(fake_AA)
-        real_AB = fake_AB * (torch.cat((self.cond_AB, self.cond_AB, self.cond_AB), 1) +
-                             self.mask_norm.expand_as(fake_AA)) / \
-                            (self.mask_norm * 2).expand_as(fake_AA)
+
         
+        mnorn = self.mask_norm.expand_as(fake_AA)
+        mask_tmp = self.cond_AA
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        real_AA = (fake_AA * mask_tmp).detach()
+        
+        mask_tmp = self.cond_AB
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        real_AB = (fake_AB * mask_tmp).detach()
+        # real_AA = fake_AA * (torch.cat((self.cond_AA, self.cond_AA, self.cond_AA), 1) +
+        #                      self.mask_norm.expand_as(fake_AA)) / \
+        #                     (self.mask_norm * 2).expand_as(fake_AA)
+        # real_AB = fake_AB * (torch.cat((self.cond_AB, self.cond_AB, self.cond_AB), 1) +
+        #                      self.mask_norm.expand_as(fake_AA)) / \
+        #                     (self.mask_norm * 2).expand_as(fake_AA)
+        # 
         fake_BA = self.netG_A(self.cond_B)
         fake_BB = self.netG_B(self.cond_B)
-        real_BB = fake_BB * (torch.cat((self.cond_BB, self.cond_BB, self.cond_BB), 1) +
-                  self.mask_norm.expand_as(fake_BB)) / \
-                (self.mask_norm * 2).expand_as(fake_BB)
-        real_BA = fake_BA * (torch.cat((self.cond_BA, self.cond_BA, self.cond_BA), 1) +
-                  self.mask_norm.expand_as(fake_BB)) / \
-                (self.mask_norm * 2).expand_as(fake_BB)
+        
+        mask_tmp = self.cond_BB
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        real_BB = (fake_BB * mask_tmp).detach()
+        
+        mask_tmp = self.cond_BA
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        real_BA = (fake_BA * mask_tmp).detach()
+        # real_BB = fake_BB * (torch.cat((self.cond_BB, self.cond_BB, self.cond_BB), 1) +
+        #           self.mask_norm.expand_as(fake_BB)) / \
+        #         (self.mask_norm * 2).expand_as(fake_BB)
+        # real_BA = fake_BA * (torch.cat((self.cond_BA, self.cond_BA, self.cond_BA), 1) +
+        #           self.mask_norm.expand_as(fake_BB)) / \
+        #         (self.mask_norm * 2).expand_as(fake_BB)
             
-        mask_AC = torch.cat((fake_AA, fake_AB, cond_AA, cond_AB), 1)
-        mask_BC = torch.cat((fake_BA, fake_BB, cond_BA, cond_BB), 1)
+        mask_tmp = self.cond_A
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        fake_AA = (fake_AA * mask_tmp).detach()
+        fake_AB = (fake_AB * mask_tmp).detach()
+        mask_tmp = self.cond_B
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        fake_BB = (fake_BB * mask_tmp).detach()
+        fake_BA = (fake_BA * mask_tmp).detach()
+        mask_AC = torch.cat((fake_AA, fake_AB, self.cond_AA, self.cond_AB), 1)
+        mask_BC = torch.cat((fake_BA, fake_BB, self.cond_BA, self.cond_BB), 1)
         
         
 
@@ -264,25 +293,42 @@ class Chimera3GANModel(BaseModel):
         # Identity loss
         if lambda_idt > 0:
             # G_A should be identity if mask_AC is fed.
-            idt_AC = fake_AC * (torch.cat((self.cond_AB, self.cond_AB, self.cond_AB), 1) +
-                                self.mask_norm.expand_as(fake_AA)) / \
-                               (self.mask_norm * 2).expand_as(fake_AA)
+
+            mask_tmp = self.cond_AB
+            mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+            idt_AC = fake_AC * mask_tmp
+            # idt_AC = fake_AC * (torch.cat((self.cond_AB, self.cond_AB, self.cond_AB), 1) +
+            #                     self.mask_norm.expand_as(fake_AA)) / \
+            #                    (self.mask_norm * 2).expand_as(fake_AA)
             loss_idt_AC = self.criterionIdt(idt_AC, real_AB) * lambda_ * lambda_idt
-            idt_AC = fake_AC * (torch.cat((self.cond_AA, self.cond_AA, self.cond_AA), 1) +
-                               self.mask_norm.expand_as(fake_AA)) / \
-                              (self.mask_norm * 2).expand_as(fake_AA)
+
+            mask_tmp = self.cond_AA
+            mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+            idt_AC = fake_AC * mask_tmp
+            # idt_AC = fake_AC * (torch.cat((self.cond_AA, self.cond_AA, self.cond_AA), 1) +
+            #                    self.mask_norm.expand_as(fake_AA)) / \
+            #                   (self.mask_norm * 2).expand_as(fake_AA)
             loss_idt_AC += self.criterionIdt(idt_AC, real_AA) * lambda_ * lambda_idt
 
             # G_A should be identity if mask_BC is fed.
-            idt_BC = fake_AC * (torch.cat((self.cond_BA, self.cond_BA, self.cond_BA), 1) +
-                                self.mask_norm.expand_as(fake_BB)) / \
-                               (self.mask_norm * 2).expand_as(fake_BB)
+            
+            mask_tmp = self.cond_BA
+            mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+            idt_BC = fake_BC * mask_tmp
+            # idt_BC = fake_AC * (torch.cat((self.cond_BA, self.cond_BA, self.cond_BA), 1) +
+            #                     self.mask_norm.expand_as(fake_BB)) / \
+            #                    (self.mask_norm * 2).expand_as(fake_BB)
             loss_idt_BC = self.criterionIdt(idt_BC, real_BA) * lambda_ * lambda_idt
-            idt_BC = fake_AC * (torch.cat((self.cond_BB, self.cond_BB, self.cond_BB), 1) +
-                               self.mask_norm.expand_as(fake_BB)) / \
-                              (self.mask_norm * 2).expand_as(fake_BB)
+            mask_tmp = self.cond_BB
+            mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+            idt_BC = fake_BC * mask_tmp
+            # idt_BC = fake_AC * (torch.cat((self.cond_BB, self.cond_BB, self.cond_BB), 1) +
+            #                    self.mask_norm.expand_as(fake_BB)) / \
+            #                   (self.mask_norm * 2).expand_as(fake_BB)
             loss_idt_BC += self.criterionIdt(idt_BC, real_BB) * lambda_ * lambda_idt
 
+            self.idt_AC = idt_AC.data
+            self.idt_BC = idt_BC.data
             self.loss_idt_AC = loss_idt_AC.data[0]
             self.loss_idt_BC = loss_idt_BC.data[0]
         else:

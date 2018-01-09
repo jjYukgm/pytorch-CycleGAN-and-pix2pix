@@ -34,6 +34,8 @@ class MUnalignedDataset(BaseDataset):
         self.A_size = len(self.A_paths)
         self.B_size = len(self.B_paths)
 
+        if self.opt.isG3:
+            self.mA_size = len(self.A_paths)
         # transform is in CombineTransform()
         # self.transform = get_transform(opt)
         if hasattr(self.opt, "how_many"):
@@ -42,14 +44,13 @@ class MUnalignedDataset(BaseDataset):
             self.opt.no_rand = False
 
     def __getitem__(self, index):
-        if self.opt.isG3:
+        if self.opt.isG3 and not self.opt.isTrain:
             mA_path = self.mA_paths[index % self.mA_size]
             mA_img = Image.open(mA_path).convert('RGB')
             mA, mAA, mAB = convertMask(mA_img)
             return {'mA': mA, 'mAA': mAA, 'mAB': mAB,
                     'mB': mA, 'mAB': mAA, 'mBA': mAB,
                     'A_paths': mA_path}
-
         A_path = self.A_paths[index % self.A_size]
         mA_path = self.mA_paths[index % self.A_size]
         index_A = index % self.A_size
