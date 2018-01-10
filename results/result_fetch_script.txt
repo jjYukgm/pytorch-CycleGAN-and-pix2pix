@@ -1,0 +1,39 @@
+epo='200'
+source='./results/cd_chimera3gan2/train_'
+target='./results/report_img'
+
+sou=${source}${epo}/images
+tar=${target}/${epo}_wr # _su, _me, _wr
+echo ${tar}
+
+mkdir -p ${tar}
+########################################################
+lists=''
+########################################################
+IFS=',' read -a list <<< "$lists"
+for fn in ${list[@]}
+do
+	fname=${fn}_fake_AA.png
+	cp ${sou}/${fname} ${tar}/${fname}
+	fname=${fn}_fake_AB.png
+	cp ${sou}/${fname} ${tar}/${fname}
+	fname=${fn}_cond_AA.png
+	cp ${sou}/${fname} ${tar}/${fname}
+	fname=${fn}_fake_AC.png
+	cp ${sou}/${fname} ${tar}/${fname}
+done
+
+########################################################
+IFS=',' read -a list <<< "$lists"
+for fn in ${list[@]}
+do
+	fname=${fn}_fake_BA.png
+	cp ${sou}/${fname} ${tar}/${fname}
+	fname=${fn}_fake_BB.png
+	cp ${sou}/${fname} ${tar}/${fname}
+	fname=${fn}_cond_BB.png
+	cp ${sou}/${fname} ${tar}/${fname}
+	fname=${fn}_fake_BC.png
+	cp ${sou}/${fname} ${tar}/${fname}
+done
+
