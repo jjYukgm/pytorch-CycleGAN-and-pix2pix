@@ -10,7 +10,7 @@ class MUnalignedDataset(BaseDataset):
     def initialize(self, opt):
         self.opt = opt
         self.root = opt.dataroot
-        if self.opt.isG3 and not self.opt.isTrain:
+        if False: # self.opt.isG3 and not self.opt.isTrain:
             self.dir_mA = os.path.join(opt.dataroot, 'testmask')
             self.mA_paths = make_dataset(self.dir_mA)
             self.mA_paths = sorted(self.mA_paths)
@@ -44,7 +44,7 @@ class MUnalignedDataset(BaseDataset):
             self.opt.no_rand = False
 
     def __getitem__(self, index):
-        if self.opt.isG3 and not self.opt.isTrain:
+        if False: # self.opt.isG3 and not self.opt.isTrain:
             mA_path = self.mA_paths[index % self.mA_size]
             mA_img = Image.open(mA_path).convert('RGB')
             mA, mAA, mAB = convertMask(mA_img)
@@ -74,7 +74,7 @@ class MUnalignedDataset(BaseDataset):
             A, mA, mAA, mAB = combineTransform(A_img, mA_img, self.opt)
             B, mB, mBB, mBA = combineTransform(B_img, mB_img, self.opt)
         except Exception as ex:
-            print ex
+            print("ex")
             print("A_path: " + A_path)
             print("B_path: " + B_path)
             print("Try Next")

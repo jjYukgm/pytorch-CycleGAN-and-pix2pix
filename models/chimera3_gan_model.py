@@ -62,7 +62,7 @@ class Chimera3GANModel(BaseModel):
                 self.netD_B = networks.define_D(opt.output_nc, opt.ndf,
                                                 opt.which_model_netD,
                                                 opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
-        if self.isG3 or opt.continue_train:
+        if self.isG3 or (self.isTrain or opt.continue_train):
             which_epoch = opt.which_epoch
             self.load_network(self.netG_A, 'G_A', which_epoch)
             self.load_network(self.netG_B, 'G_B', which_epoch)
@@ -162,18 +162,31 @@ class Chimera3GANModel(BaseModel):
     def test(self):
         cond_A = Variable(self.mask_A, volatile=True)
         fake_A = self.netG_A(cond_A)
-        self.fake_A = fake_A.data
+        self.fake_AA = fake_A.data
+        mask_norm = Variable(self.Tensor([1]))
+        
+        mnorn = mask_norm.expand_as(fake_A)
+        mask_tmp = cond_A
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        fake_A = (fake_A * mask_tmp).detach()
 
         cond_B = Variable(self.mask_B, volatile=True)
         fake_B = self.netG_B(cond_B)
-        self.fake_B = fake_B.data
+        self.fake_BB = fake_B.data
+        mask_tmp = cond_B
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        fake_B = (fake_B * mask_tmp).detach()
 
 
         cond_AA = Variable(self.mask_AA)
         cond_AB = Variable(self.mask_AB)
         fake_AB = self.netG_B(cond_A)
+        mask_tmp = cond_A
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        fake_AB = (fake_AB * mask_tmp).detach()
         mask_AC = torch.cat((fake_A, fake_AB, cond_AA, cond_AB), 1)
         fake_AC = self.netG_C(mask_AC)
+        fake_AC = (fake_AC * mask_tmp).detach()
         self.fake_AB = fake_AB.data
         self.fake_AC = fake_AC.data
 
@@ -181,8 +194,12 @@ class Chimera3GANModel(BaseModel):
         cond_BA = Variable(self.mask_BA)
         cond_BB = Variable(self.mask_BB)
         fake_BA = self.netG_A(cond_B)
+        mask_tmp = cond_B
+        mask_tmp = (torch.cat((mask_tmp, mask_tmp, mask_tmp), 1) + mnorn) / (mnorn + mnorn)
+        fake_BA = (fake_BA * mask_tmp).detach()
         mask_BC = torch.cat((fake_BA, fake_B, cond_BA, cond_BB), 1)
         fake_BC = self.netG_C(mask_BC)
+        fake_BC = (fake_BC * mask_tmp).detach()
         self.fake_BA = fake_BA.data
         self.fake_BC = fake_BC.data
         
